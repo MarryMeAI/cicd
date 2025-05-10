@@ -1,0 +1,30 @@
+name: 'ECR Create Action'
+description: 'Create or update Amazon ECR repository with immutable tags'
+inputs:
+  ecr_repository:
+    description: 'Name of the ECR repository'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:    
+    - name: Check and create ECR repository
+      shell: bash
+      run: |
+        # Check if repository exists
+        if ! aws ecr describe-repositories --repository-names ${{ inputs.ecr_repository }} 2>/dev/null; then
+          echo "Creating new ECR repository: ${{ inputs.ecr_repository }}"
+          aws ecr create-repository \
+            --repository-name ${{ inputs.ecr_repository }} \
+            --image-scanning-configuration scanOnPush=true \
+            --encryption-configuration encryptionType=AES256
+        else
+          echo "ECR repository already exists: ${{ inputs.ecr_repository }}"
+        fi
+
+    - name: Set immutable tags
+      shell: bash
+      run: |
+        aws ecr put-image-tag-mutability \
+          --repository-name ${{ inputs.ecr_repository }} \
+          --image-tag-mutability IMMUTABLE
